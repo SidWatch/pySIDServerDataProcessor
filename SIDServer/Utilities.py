@@ -24,6 +24,7 @@ class ConfigUtility:
 
         return config
 
+
 class HDF5Utility:
     def __init__(self):
         """
@@ -109,6 +110,19 @@ class HDF5Utility:
                                                           dtype=np.float64,
                                                           data=joined_array)
         ds.attrs["Time"] = time.isoformat()
+
+    @staticmethod
+    def read_file(filename):
+        data_file = h5py.File(filename, "a")
+
+        raw_data_group = data_file.get("raw_sid_data")
+        frequency_spectrum_data_group = data_file.get("frequency_spectrum_data")
+        stations_group = data_file.get("monitored_stations")
+
+        return {"File": data_file,
+                "RawDataGroup": raw_data_group,
+                "StationsGroup": stations_group,
+                "FrequencySpectrumDataGroup": frequency_spectrum_data_group}
 
 
 class FrequencyUtility:
