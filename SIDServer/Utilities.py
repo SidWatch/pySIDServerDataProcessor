@@ -8,6 +8,7 @@ import numpy as np
 from matplotlib.mlab import psd
 import h5py
 
+
 class ConfigUtility:
     def __init__(self):
         """
@@ -141,6 +142,7 @@ class FrequencyUtility:
         :return:
         """
         return psd(data, nfft, audio_sampling_rate)
+
 
 class DateUtility:
     def __init__(self):

@@ -10,6 +10,7 @@ from boto.s3.connection import OrdinaryCallingFormat
 from SIDServer.Utilities import HDF5Utility
 from SIDServer.Utilities import DateUtility
 from SIDServer.Utilities import FrequencyUtility
+from SIDServer.DatabaseAccess import DataAccessObject
 
 class SendToSidWatchServerController:
     def __init__(self, config):
@@ -37,6 +38,8 @@ class SendToSidWatchServerController:
             source_bucket = connection.get_bucket(source_bucket_name)
             objects = source_bucket.list()
 
+            dao = DataAccessObject(self.Config)
+
             for key in objects:
                 working_file = temp_folder + key.key
 
@@ -53,14 +56,16 @@ class SendToSidWatchServerController:
                 frequency_spectrum_group = result["FrequencySpectrumDataGroup"]
 
                 #process the stations
+                monitor_id = stations_group.attrs['MonitorId']
                 sg_keys = stations_group.keys()
                 for sg_key in sg_keys:
-                    self.process_station(stations_group[sg_key])
+                    self.process_station(dao, monitor_id, stations_group[sg_key])
 
                 #process the frequency spectrum
+                monitor_id = frequency_spectrum_group.attrs['MonitorId']
                 fsg_keys = frequency_spectrum_group.keys()
                 for fsg_key in fsg_keys:
-                    self.process_frequency_spectrum(frequency_spectrum_group[fsg_key])
+                    self.process_frequency_spectrum(dao, monitor_id, frequency_spectrum_group[fsg_key])
 
                 #key.copy(destination_bucket, '//'+ key.key, reduced_redundancy=False)
 
@@ -77,17 +82,38 @@ class SendToSidWatchServerController:
         pass
 
     @staticmethod
-    def process_station(group):
+    def process_station(dao, monitor_id, group):
         print('Processing Station - {0}'.format(group.name))
 
-        ds_keys = group.keys()
+        callsign = group.attrs["CallSign"]
+        print('Callsign : {0}, MonitorId : {1}'.format(callsign, monitor_id))
 
-        for sg_key in ds_keys:
-            print('Processing Station Dataset - {0}'.format(sg_key))
+        station = dao.get_station(callsign)
+        site = dao.get_site(monitor_id)
+
+        if site is not None:
+            if station is not None:
+                print('StationId : {0}, SiteId : {1}'.format(station.Id, site.Id))
+
+                ds_keys = group.keys()
+
+                for sg_key in ds_keys:
+                    dataset = group[sg_key]
+
+                    time = dataset.attrs['Time']
+                    signal_strength = dataset[0]
+
+
+
+                    print('Processing Station {0}: Time - {1}: Strength - {2}'.format(callsign, time, signal_strength))
+            else:
+                print('Station is not found in database')
+        else:
+            print('Site is not found in database')
 
 
     @staticmethod
-    def process_frequency_spectrum(dataset):
+    def process_frequency_spectrum(dao, monitor_id, dataset):
         print('Processing Frequency Spectrum Dataset - {0}'.format(dataset.name))
 
     def stop(self):
