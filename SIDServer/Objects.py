@@ -108,6 +108,7 @@ class StationReading:
         self.CreatedAt = row[5]
         self.UpdatedAt = row[6]
 
+
 class Site:
     def __init__(self):
         self.Id = 0
@@ -130,3 +131,38 @@ class Site:
         self.Longitude = row[6]
         self.CreatedAt = row[7]
         self.UpdatedAt = row[8]
+
+
+class File:
+    def __init__(self):
+        self.Id = 0
+        self.SiteId = 0
+        self.DateTime = None
+        self.FileName = None
+        self.Processed = False
+        self.Archived = False
+        self.Available = False
+        self.CreatedAt = None
+        self.UpdatedAt = None
+
+    def load_from_row(self, row):
+        self.Id = row[0]
+        self.SiteId = row[1]
+        self.DateTime = row[2]
+        self.Processed = row[3]
+        self.Archived = row[4]
+        self.Available = row[5]
+        self.CreatedAt = row[6]
+        self.UpdatedAt = row[7]
+
+    def to_insert_array(self):
+        array = (self.SiteId,
+                 self.DateTime,
+                 self.FileName,
+                 self.Processed,
+                 self.Archived,
+                 self.Available,
+                 self.CreatedAt,
+                 self.UpdatedAt)
+
+        return array

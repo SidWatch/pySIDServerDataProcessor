@@ -1,5 +1,6 @@
 __author__ = 'bnelson'
 import datetime as dt
+import dateutil.parser
 import os
 import time as threadtime
 
@@ -7,6 +8,7 @@ from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from boto.s3.connection import OrdinaryCallingFormat
 
+from SIDServer.Objects import File
 from SIDServer.Utilities import HDF5Utility
 from SIDServer.Utilities import DateUtility
 from SIDServer.Utilities import FrequencyUtility
@@ -41,37 +43,62 @@ class SendToSidWatchServerController:
             dao = DataAccessObject(self.Config)
 
             for key in objects:
-                working_file = temp_folder + key.key
+                file_name = key.key
+                working_file = temp_folder + file_name
 
-                print('Downloading {0}'.format(key.key))
+                print('Downloading {0}'.format(file_name))
                 key.get_contents_to_filename(working_file)
 
-                print('Processing {0}'.format(key.key))
+                print('Processing {0}'.format(file_name))
                 result = HDF5Utility.read_file(working_file)
 
                 #Create a file record
-                file = result["File"]
+                data_file = result["File"]
                 raw_data_group = result["RawDataGroup"]
                 stations_group = result["StationsGroup"]
                 frequency_spectrum_group = result["FrequencySpectrumDataGroup"]
 
-                #process the stations
-                monitor_id = stations_group.attrs['MonitorId']
-                sg_keys = stations_group.keys()
-                for sg_key in sg_keys:
-                    self.process_station(dao, monitor_id, stations_group[sg_key])
+                monitor_id = data_file.attrs['MonitorId']
+                created_time = dateutil.parser.parse(data_file.attrs['CreatedDateTime'])
+                utc_offset = data_file.attrs['UtcOffset']
+                timezone = data_file.attrs['Timezone']
 
-                #process the frequency spectrum
-                monitor_id = frequency_spectrum_group.attrs['MonitorId']
-                fsg_keys = frequency_spectrum_group.keys()
-                for fsg_key in fsg_keys:
-                    self.process_frequency_spectrum(dao, monitor_id, frequency_spectrum_group[fsg_key])
+                site = dao.get_site(monitor_id)
 
-                #key.copy(destination_bucket, '//'+ key.key, reduced_redundancy=False)
+                if site is not None:
+                    file = dao.get_file(file_name)
+                    if file is None:
+                        file = File()
+                        file.Archived = False
+                        file.Available = False
+                        file.CreatedAt = dt.datetime.utcnow()
+                        file.UpdatedAt = file.CreatedAt
+                        file.FileName = file_name
+                        file.Processed = False
+                        file.SiteId = site.Id
+                        file.DateTime = created_time
 
-                file.close()
+                        dao.save_file(file)
 
-                os.remove(working_file)
+                    #process the stations
+                    sg_keys = stations_group.keys()
+                    for sg_key in sg_keys:
+                        self.process_station(dao, monitor_id, stations_group[sg_key])
+
+                    #process the frequency spectrum
+                    fsg_keys = frequency_spectrum_group.keys()
+                    for fsg_key in fsg_keys:
+                        self.process_frequency_spectrum(dao, monitor_id, frequency_spectrum_group[fsg_key])
+
+                    #key.copy(destination_bucket, '//'+ key.key, reduced_redundancy=False)
+
+                    data_file.close()
+
+                    os.remove(working_file)
+                else:
+                    data_file.close()
+                    #need to move to process later since site doesn't exist
+
                 pass
 
             print('Sleeping for 60 seconds')

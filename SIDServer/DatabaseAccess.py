@@ -3,6 +3,7 @@ __author__ = 'bnelson'
 import pymysql
 from SIDServer.Objects import Station
 from SIDServer.Objects import Site
+from SIDServer.Objects import File
 
 
 class DataAccessObject:
@@ -17,10 +18,34 @@ class DataAccessObject:
                                   passwd=self.Config.SidWatchDatabase.Password)
 
     def get_file(self, filename):
-        pass
+        sql = """SELECT id, siteid, datetime, filename, processed, archived, available,
+                       created_at, updated_at
+                FROM Files
+                WHERE filename = %s"""
+
+        cursor = self.DB.cursor()
+        cursor.execute(sql, filename)
+        row = cursor.fetchone()
+
+        if row is not None:
+            file = File()
+            file.load_from_row(row)
+            return file
+        else:
+            return None
+
 
     def save_file(self, file):
-        pass
+        sql = """INSERT INTO Files (siteid, datetime, filename, processed, archived, available, created_at, updated_at)
+                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
+
+        array = file.to_insert_array()
+        print(array)
+
+        cursor = self.DB.cursor()
+        cursor.execute(sql, array)
+        file.Id = cursor.lastrowid
+        self.DB.commit()
 
     def save_frequency_spectrum(self, frequency_spectrum):
         pass
