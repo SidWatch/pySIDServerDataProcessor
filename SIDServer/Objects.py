@@ -166,3 +166,35 @@ class File:
                  self.UpdatedAt)
 
         return array
+
+class StationReading:
+    def __init__(self):
+        self.Id = 0
+        self.SiteId = 0
+        self.StationId = 0
+        self.ReadingDateTime = None
+        self.ReadingMagnitude = None
+        self.FileId = 0
+        self.CreatedAt = None
+        self.UpdatedAt = None
+
+    def load_from_row(self, row):
+        self.Id = row[0]
+        self.SiteId = row[1]
+        self.StationId = row[2]
+        self.ReadingDateTime = row[3]
+        self.ReadingMagnitude = row[4]
+        self.FileId = row[5]
+        self.CreatedAt = row[6]
+        self.UpdatedAt = row[7]
+
+    def to_insert_array(self):
+        array = (self.SiteId,
+                 self.StationId,
+                 self.ReadingDateTime,
+                 self.ReadingMagnitude,
+                 self.FileId,
+                 self.CreatedAt,
+                 self.UpdatedAt)
+
+        return array

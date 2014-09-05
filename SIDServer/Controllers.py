@@ -126,9 +126,9 @@ class SendToSidWatchServerController:
 
                 for sg_key in ds_keys:
                     dataset = group[sg_key]
-
                     time = dataset.attrs['Time']
                     signal_strength = dataset[0]
+
 
 
 
