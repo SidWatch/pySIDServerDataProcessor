@@ -9,10 +9,12 @@ from boto.s3.key import Key
 from boto.s3.connection import OrdinaryCallingFormat
 
 from SIDServer.Objects import File
+from SIDServer.Objects import StationReading
 from SIDServer.Utilities import HDF5Utility
 from SIDServer.Utilities import DateUtility
 from SIDServer.Utilities import FrequencyUtility
 from SIDServer.DatabaseAccess import DataAccessObject
+
 
 class SendToSidWatchServerController:
     def __init__(self, config):
@@ -83,12 +85,12 @@ class SendToSidWatchServerController:
                     #process the stations
                     sg_keys = stations_group.keys()
                     for sg_key in sg_keys:
-                        self.process_station(dao, monitor_id, stations_group[sg_key])
+                        self.process_station(dao, file, stations_group[sg_key])
 
                     #process the frequency spectrum
                     fsg_keys = frequency_spectrum_group.keys()
                     for fsg_key in fsg_keys:
-                        self.process_frequency_spectrum(dao, monitor_id, frequency_spectrum_group[fsg_key])
+                        self.process_frequency_spectrum(dao, file, frequency_spectrum_group[fsg_key])
 
                     #key.copy(destination_bucket, '//'+ key.key, reduced_redundancy=False)
 
@@ -109,18 +111,15 @@ class SendToSidWatchServerController:
         pass
 
     @staticmethod
-    def process_station(dao, monitor_id, group):
+    def process_station(dao, file, group):
         print('Processing Station - {0}'.format(group.name))
 
         callsign = group.attrs["CallSign"]
-        print('Callsign : {0}, MonitorId : {1}'.format(callsign, monitor_id))
-
         station = dao.get_station(callsign)
-        site = dao.get_site(monitor_id)
 
-        if site is not None:
+        if file is not None:
             if station is not None:
-                print('StationId : {0}, SiteId : {1}'.format(station.Id, site.Id))
+                print('StationId : {0}, SiteId : {1}'.format(station.Id, file.SiteId))
 
                 ds_keys = group.keys()
 
@@ -128,6 +127,15 @@ class SendToSidWatchServerController:
                     dataset = group[sg_key]
                     time = dataset.attrs['Time']
                     signal_strength = dataset[0]
+
+                    reading = dao.get_station_reading(file.SiteId, station.Id, time)
+
+                    if reading is None:
+                        reading = StationReading()
+                        reading.SiteId = file.SiteId
+                        reading.StationId = station.Id
+                        reading.ReadingDateTime = time
+
 
 
 
@@ -140,7 +148,7 @@ class SendToSidWatchServerController:
 
 
     @staticmethod
-    def process_frequency_spectrum(dao, monitor_id, dataset):
+    def process_frequency_spectrum(dao, file, dataset):
         print('Processing Frequency Spectrum Dataset - {0}'.format(dataset.name))
 
     def stop(self):
