@@ -10,6 +10,7 @@ from boto.s3.connection import OrdinaryCallingFormat
 
 from SIDServer.Objects import File
 from SIDServer.Objects import StationReading
+from SIDServer.Objects import SiteSpectrum
 from SIDServer.Utilities import HDF5Utility
 from SIDServer.Utilities import DateUtility
 from SIDServer.Utilities import FrequencyUtility
@@ -90,7 +91,10 @@ class SendToSidWatchServerController:
                     #process the frequency spectrum
                     fsg_keys = frequency_spectrum_group.keys()
                     for fsg_key in fsg_keys:
-                        self.process_frequency_spectrum(dao, file, frequency_spectrum_group[fsg_key])
+                        self.process_site_spectrum(dao,
+                                                   file,
+                                                   frequency_spectrum_group,
+                                                   frequency_spectrum_group[fsg_key])
 
                     #key.copy(destination_bucket, '//'+ key.key, reduced_redundancy=False)
 
@@ -98,6 +102,7 @@ class SendToSidWatchServerController:
 
                     os.remove(working_file)
                 else:
+                    print('Site {0} was not found'.format(monitor_id))
                     data_file.close()
                     #need to move to process later since site doesn't exist
 
@@ -135,21 +140,50 @@ class SendToSidWatchServerController:
                         reading.SiteId = file.SiteId
                         reading.StationId = station.Id
                         reading.ReadingDateTime = time
+                        reading.FileId = file.Id
 
+                    reading.ReadingMagnitude = signal_strength
 
-
-
+                    dao.save_station_reading(reading)
 
                     print('Processing Station {0}: Time - {1}: Strength - {2}'.format(callsign, time, signal_strength))
             else:
                 print('Station is not found in database')
         else:
-            print('Site is not found in database')
+            print('File was not supplied')
 
 
     @staticmethod
-    def process_frequency_spectrum(dao, file, dataset):
+    def process_site_spectrum(dao, file, group, dataset):
         print('Processing Frequency Spectrum Dataset - {0}'.format(dataset.name))
+
+        if file is not None:
+            if dataset is not None:
+                time = dataset.attrs['Time']
+
+                site_spectrum = dao.get_site_spectrum(file.SiteId, time)
+
+                if site_spectrum is None:
+                    site_spectrum = SiteSpectrum()
+                    site_spectrum.SiteId = file.SiteId
+                    site_spectrum.ReadingDateTime = time
+                    site_spectrum.FileId = file.Id
+                    site_spectrum.CreatedAt = dt.datetime.utcnow()
+                    site_spectrum.UpdatedAt = site_spectrum.CreatedAt
+                else:
+                    site_spectrum.UpdatedAt = dt.datetime.utcnow()
+
+                site_spectrum.NFFT = group.attrs.get('NFFT', 1024)
+                site_spectrum.SamplesPerSeconds = group.attrs.get('SamplingRate', 96000)
+                site_spectrum.SamplingFormat = group.attrs.get('SamplingFormat', 24)
+
+                dao.save_site_spectrum(site_spectrum)
+
+            else:
+                print('Dataset not supplied')
+        else:
+            print('File was not supplied')
+
 
     def stop(self):
         self.Done = True

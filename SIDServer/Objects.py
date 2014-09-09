@@ -1,5 +1,5 @@
 __author__ = 'briannelson'
-
+import numpy as np
 
 class Logging:
     def __init__(self, values_dictionary):
@@ -192,7 +192,42 @@ class StationReading:
         array = (self.SiteId,
                  self.StationId,
                  self.ReadingDateTime,
-                 self.ReadingMagnitude,
+                 np.asscalar(np.float64(self.ReadingMagnitude)),
+                 self.FileId,
+                 self.CreatedAt,
+                 self.UpdatedAt)
+
+        return array
+
+class SiteSpectrum:
+    def __init__(self):
+        self.Id = 0
+        self.SiteId = 0
+        self.ReadingDateTime = None
+        self.SamplesPerSeconds = 0
+        self.NFFT = 0
+        self.SamplingFormat = 0
+        self.FileId = 0
+        self.CreatedAt = None
+        self.UpdatedAt = None
+
+    def load_from_row(self, row):
+        self.Id = row[0]
+        self.SiteId = row[1]
+        self.ReadingDateTime = row[3]
+        self.SamplesPerSeconds = row[4]
+        self.NFFT = row[5]
+        self.SamplingFormat = row[6]
+        self.FileId = row[7]
+        self.CreatedAt = row[8]
+        self.UpdatedAt = row[9]
+
+    def to_insert_array(self):
+        array = (self.SiteId,
+                 self.ReadingDateTime,
+                 self.SamplesPerSeconds,
+                 self.NFFT,
+                 self.SamplingFormat,
                  self.FileId,
                  self.CreatedAt,
                  self.UpdatedAt)
