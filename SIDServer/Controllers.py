@@ -3,6 +3,7 @@ import datetime as dt
 import dateutil.parser
 import os
 import time as threadtime
+import numpy as np
 
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
@@ -115,8 +116,7 @@ class SendToSidWatchServerController:
 
         pass
 
-    @staticmethod
-    def process_station(dao, file, group):
+    def process_station(self, dao, file, group):
         print('Processing Station - {0}'.format(group.name))
 
         callsign = group.attrs["CallSign"]
@@ -152,9 +152,7 @@ class SendToSidWatchServerController:
         else:
             print('File was not supplied')
 
-
-    @staticmethod
-    def process_site_spectrum(dao, file, group, dataset):
+    def process_site_spectrum(self, dao, file, group, dataset):
         print('Processing Frequency Spectrum Dataset - {0}'.format(dataset.name))
 
         if file is not None:
@@ -173,17 +171,43 @@ class SendToSidWatchServerController:
                 else:
                     site_spectrum.UpdatedAt = dt.datetime.utcnow()
 
-                site_spectrum.NFFT = group.attrs.get('NFFT', 1024)
-                site_spectrum.SamplesPerSeconds = group.attrs.get('SamplingRate', 96000)
-                site_spectrum.SamplingFormat = group.attrs.get('SamplingFormat', 24)
+                site_spectrum.NFFT = int(group.attrs.get('NFFT', 1024))
+                site_spectrum.SamplesPerSeconds = int(group.attrs.get('SamplingRate', 96000))
+                site_spectrum.SamplingFormat = int(group.attrs.get('SamplingFormat', 24))
 
                 dao.save_site_spectrum(site_spectrum)
 
+                self.process_site_spectrum_data(dao, site_spectrum, dataset)
             else:
                 print('Dataset not supplied')
         else:
             print('File was not supplied')
 
+    def process_site_spectrum_data(self, dao, site_spectrum, dataset):
+        if site_spectrum is not None:
+            if dataset is not None:
+                shape = dataset.shape
+                array = np.zeros(shape)
+
+                dataset.read_direct(array)
+
+                rows = shape[0]
+
+                if rows == 2:
+                    width = shape[1]
+
+                    for x in range(0, width):
+                        print("{0} - {1}".format(array[0, x], array[1, x]))
+                else:
+                    print('Frequency Spectrum data set not the correct shape')
+                    
+                pass
+            else:
+                print('Dataset not supplied')
+        else:
+            print('site spectrum not supplied')
+
+        pass
 
     def stop(self):
         self.Done = True
