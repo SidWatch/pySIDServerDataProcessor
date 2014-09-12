@@ -46,7 +46,6 @@ class DataAccessObject:
                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
 
         array = file.to_insert_array()
-        print(array)
 
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
@@ -60,7 +59,6 @@ class DataAccessObject:
                  WHERE id = %d """
         array = file.to_insert_array()
         array.append(file.Id)
-        print(array)
 
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
@@ -75,7 +73,6 @@ class DataAccessObject:
 
         cursor = self.DB.cursor()
         params = (site_id, reading_datetime)
-        print(params)
 
         cursor.execute(sql, params)
         row = cursor.fetchone()
@@ -99,7 +96,6 @@ class DataAccessObject:
                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
 
         array = site_spectrum.to_insert_array()
-        print(array)
 
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
@@ -125,6 +121,61 @@ class DataAccessObject:
         cursor.execute(sql, array)
         self.DB.commit()
 
+    def get_site_spectrum_data_reading(self, site_spectrum_id, frequency):
+        sql = """SELECT id, sitespectrumid, frequency, readingmagnitude
+                 FROM sitespectrumdata
+                 WHERE sitespectrumid = %s
+                 AND frequency = %s """
+
+        cursor = self.DB.cursor()
+        params = (site_spectrum_id, frequency)
+        cursor.execute(sql, params)
+        row = cursor.fetchone()
+
+        if row is not None:
+            station_reading = StationReading()
+            station_reading.load_from_row(row)
+            return station_reading
+        else:
+            return None
+
+    def get_site_spectrum_data_points(self, site_spectrum_id):
+        sql = """SELECT id, sitespectrumid, frequency, readingmagnitude
+                 FROM sitespectrumdata
+                 WHERE sitespectrumid = %s """
+
+    def save_site_spectrum_reading(self, site_spectrum_reading):
+        if site_spectrum_reading.Id == 0:
+            self.__insert_site_spectrum_reading__(site_spectrum_reading)
+        else:
+            self.__update_site_spectrum_reading__(site_spectrum_reading)
+
+    def __insert_site_spectrum_reading__(self, site_spectrum_reading):
+        sql = """INSERT INTO sitespectrumdata (sitespectrumid, frequency, readingmagnitude, created_at, updated_at)
+                 VALUES (%s, %s, %s, %s, %s) """
+        array = site_spectrum_reading.to_insert_array()
+
+        cursor = self.DB.cursor()
+        cursor.execute(sql, array)
+        site_spectrum_reading.Id = cursor.lastrowid
+        self.DB.commit()
+
+    def __update_site_spectrum_reading__(self, site_spectrum_reading):
+        sql = """UPDATE sitespectrumdata
+                 SET sitespectrumid = %s,
+                     frequency = %s,
+                     readingmagnitude = %s,
+                     created_at = %s,
+                     updated_at = %s
+                 WHERE id = %s """
+
+        array = site_spectrum_reading.to_insert_array()
+        array.append(site_spectrum_reading.Id)
+
+        cursor = self.DB.cursor()
+        cursor.execute(sql, array)
+        self.DB.commit()
+
     def get_station_reading(self, site_id, station_id, reading_datetime):
         sql = """SELECT id, siteid, stationid, readingdatetime, readingmagnitude, fileid, created_at, updated_at
               FROM stationreadings
@@ -134,8 +185,6 @@ class DataAccessObject:
 
         cursor = self.DB.cursor()
         params = (site_id, station_id, reading_datetime)
-        print(params)
-
         cursor.execute(sql, params)
         row = cursor.fetchone()
 
@@ -157,7 +206,6 @@ class DataAccessObject:
                                             created_at, updated_at)
                  VALUES (%s, %s, %s, %s, %s, %s, %s) """
         array = station_reading.to_insert_array()
-        print(array)
 
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
@@ -172,8 +220,6 @@ class DataAccessObject:
 
         array = station_reading.to_insert_array()
         array.append(station_reading.Id)
-
-        print(array)
 
         cursor = self.DB.cursor()
         cursor.execute(sql, array)

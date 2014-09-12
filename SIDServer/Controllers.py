@@ -11,6 +11,7 @@ from boto.s3.connection import OrdinaryCallingFormat
 
 from SIDServer.Objects import File
 from SIDServer.Objects import StationReading
+from SIDServer.Objects import SiteSpectrumReading
 from SIDServer.Objects import SiteSpectrum
 from SIDServer.Utilities import HDF5Utility
 from SIDServer.Utilities import DateUtility
@@ -141,6 +142,10 @@ class SendToSidWatchServerController:
                         reading.StationId = station.Id
                         reading.ReadingDateTime = time
                         reading.FileId = file.Id
+                        reading.CreatedAt = dt.datetime.utcnow()
+                        reading.UpdatedAt = reading.CreatedAt
+                    else:
+                        reading.UpdatedAt = dt.datetime.utcnow()
 
                     reading.ReadingMagnitude = signal_strength
 
@@ -197,17 +202,34 @@ class SendToSidWatchServerController:
                     width = shape[1]
 
                     for x in range(0, width):
-                        print("{0} - {1}".format(array[0, x], array[1, x]))
+                        frequency = array[0, x]
+                        reading = array[1, x]
+
+                        self.save_site_spectrum_reading(dao, site_spectrum.Id, frequency, reading)
+
                 else:
                     print('Frequency Spectrum data set not the correct shape')
-                    
-                pass
             else:
                 print('Dataset not supplied')
         else:
             print('site spectrum not supplied')
 
-        pass
+    def save_site_spectrum_reading(self, dao, spectrum_id, frequency, reading_magnitude):
+        reading = dao.get_site_spectrum_data_reading(spectrum_id, np.asscalar(np.float64(frequency)))
+
+        if reading is None:
+            reading = SiteSpectrumReading()
+            reading.Id = 0
+            reading.SiteSpectrumId = spectrum_id
+            reading.CreatedAt = dt.datetime.utcnow()
+            reading.UpdatedAt = reading.CreatedAt
+        else:
+            reading.UpdatedAt = dt.datetime.utcnow()
+
+        reading.Frequency = frequency
+        reading.ReadingMagnitude = reading_magnitude
+
+        dao.save_site_spectrum_reading(reading)
 
     def stop(self):
         self.Done = True
