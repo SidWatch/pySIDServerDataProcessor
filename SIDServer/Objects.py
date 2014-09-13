@@ -156,16 +156,16 @@ class File:
         self.UpdatedAt = row[7]
 
     def to_insert_array(self):
-        array = (self.SiteId,
-                 self.DateTime,
-                 self.FileName,
-                 self.Processed,
-                 self.Archived,
-                 self.Available,
-                 self.CreatedAt,
-                 self.UpdatedAt)
+        insert_array = (self.SiteId,
+                        self.DateTime,
+                        self.FileName,
+                        self.Processed,
+                        self.Archived,
+                        self.Available,
+                        self.CreatedAt,
+                        self.UpdatedAt)
+        return insert_array
 
-        return array
 
 class StationReading:
     def __init__(self):
@@ -189,15 +189,15 @@ class StationReading:
         self.UpdatedAt = row[7]
 
     def to_insert_array(self):
-        array = (self.SiteId,
-                 self.StationId,
-                 self.ReadingDateTime,
-                 np.asscalar(np.float64(self.ReadingMagnitude)),
-                 self.FileId,
-                 self.CreatedAt,
-                 self.UpdatedAt)
+        insert_array = (self.SiteId,
+                        self.StationId,
+                        self.ReadingDateTime,
+                        np.asscalar(np.float64(self.ReadingMagnitude)),
+                        self.FileId,
+                        self.CreatedAt,
+                        self.UpdatedAt)
 
-        return array
+        return insert_array
 
 
 class SiteSpectrumReading:
@@ -218,13 +218,12 @@ class SiteSpectrumReading:
         self.UpdatedAt = row[5]
 
     def to_insert_array(self):
-        array = (self.SiteSpectrumId,
-                 np.asscalar(np.float64(self.Frequency)),
-                 np.asscalar(np.float64(self.ReadingMagnitude)),
-                 self.CreatedAt,
-                 self.UpdatedAt)
-
-        return array
+        insert_array = (self.SiteSpectrumId,
+                        np.asscalar(np.float64(self.Frequency)),
+                        np.asscalar(np.float64(self.ReadingMagnitude)),
+                        self.CreatedAt,
+                        self.UpdatedAt)
+        return insert_array
 
 
 class SiteSpectrum:
@@ -242,22 +241,21 @@ class SiteSpectrum:
     def load_from_row(self, row):
         self.Id = row[0]
         self.SiteId = row[1]
-        self.ReadingDateTime = row[3]
-        self.SamplesPerSeconds = row[4]
-        self.NFFT = row[5]
-        self.SamplingFormat = row[6]
-        self.FileId = row[7]
-        self.CreatedAt = row[8]
-        self.UpdatedAt = row[9]
+        self.ReadingDateTime = row[2]
+        self.SamplesPerSeconds = row[3]
+        self.NFFT = row[4]
+        self.SamplingFormat = row[5]
+        self.FileId = row[6]
+        self.CreatedAt = row[7]
+        self.UpdatedAt = row[8]
 
     def to_insert_array(self):
-        array = (self.SiteId,
-                 self.ReadingDateTime,
-                 self.SamplesPerSeconds,
-                 self.NFFT,
-                 self.SamplingFormat,
-                 self.FileId,
-                 self.CreatedAt,
-                 self.UpdatedAt)
-
-        return array
+        insert_array = (self.SiteId,
+                        self.ReadingDateTime,
+                        self.SamplesPerSeconds,
+                        self.NFFT,
+                        self.SamplingFormat,
+                        self.FileId,
+                        self.CreatedAt,
+                        self.UpdatedAt)
+        return insert_array

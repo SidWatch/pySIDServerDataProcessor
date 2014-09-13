@@ -45,8 +45,6 @@ class SendToSidWatchServerController:
             source_bucket = connection.get_bucket(source_bucket_name)
             objects = source_bucket.list()
 
-            dao = DataAccessObject(self.Config)
-
             for key in objects:
                 file_name = key.key
                 working_file = temp_folder + file_name
@@ -68,6 +66,7 @@ class SendToSidWatchServerController:
                 utc_offset = data_file.attrs['UtcOffset']
                 timezone = data_file.attrs['Timezone']
 
+                dao = DataAccessObject(self.Config)
                 site = dao.get_site(monitor_id)
 
                 if site is not None:
@@ -98,17 +97,20 @@ class SendToSidWatchServerController:
                                                    frequency_spectrum_group,
                                                    frequency_spectrum_group[fsg_key])
 
-                    #key.copy(destination_bucket, '//'+ key.key, reduced_redundancy=False)
-
                     data_file.close()
-
                     os.remove(working_file)
+
+                    print('Starting to move file in S3')
+                    key.copy(destination_bucket, '//{0}//{1}'.format(monitor_id, key.key), reduced_redundancy=False)
+                    source_bucket.delete_key(key.key)
+
+                    print('Moved file to output site')
                 else:
                     print('Site {0} was not found'.format(monitor_id))
                     data_file.close()
                     #need to move to process later since site doesn't exist
 
-                pass
+                dao.close()
 
             print('Sleeping for 60 seconds')
             threadtime.sleep(60)
@@ -164,7 +166,10 @@ class SendToSidWatchServerController:
             if dataset is not None:
                 time = dataset.attrs['Time']
 
-                site_spectrum = dao.get_site_spectrum(file.SiteId, time)
+                reading_datetime = dateutil.parser.parse(time)
+                reading_datetime.replace(microsecond=0)
+
+                site_spectrum = dao.get_site_spectrum(file.SiteId, reading_datetime)
 
                 if site_spectrum is None:
                     site_spectrum = SiteSpectrum()
@@ -193,9 +198,7 @@ class SendToSidWatchServerController:
             if dataset is not None:
                 shape = dataset.shape
                 array = np.zeros(shape)
-
                 dataset.read_direct(array)
-
                 rows = shape[0]
 
                 if rows == 2:
@@ -206,7 +209,6 @@ class SendToSidWatchServerController:
                         reading = array[1, x]
 
                         self.save_site_spectrum_reading(dao, site_spectrum.Id, frequency, reading)
-
                 else:
                     print('Frequency Spectrum data set not the correct shape')
             else:

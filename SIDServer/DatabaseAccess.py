@@ -1,13 +1,17 @@
 __author__ = 'bnelson'
 
 import pymysql
+import datetime as dt
 from SIDServer.Objects import Station
+from SIDServer.Objects import StationReading
 from SIDServer.Objects import Site
 from SIDServer.Objects import File
-from SIDServer.Objects import StationReading
+from SIDServer.Objects import SiteSpectrum
+from SIDServer.Objects import SiteSpectrumReading
 
 
 class DataAccessObject:
+
     def __init__(self, config):
         """
         Constructor
@@ -17,6 +21,9 @@ class DataAccessObject:
                                   db=self.Config.SidWatchDatabase.Database,
                                   user=self.Config.SidWatchDatabase.User,
                                   passwd=self.Config.SidWatchDatabase.Password)
+
+    def close(self):
+        self.DB.close()
 
     def get_file(self, filename):
         sql = """SELECT id, siteid, datetime, filename, processed, archived, available,
@@ -78,9 +85,9 @@ class DataAccessObject:
         row = cursor.fetchone()
 
         if row is not None:
-            station_reading = StationReading()
-            station_reading.load_from_row(row)
-            return station_reading
+            site_spectrum = SiteSpectrum()
+            site_spectrum.load_from_row(row)
+            return site_spectrum
         else:
             return None
 
@@ -93,7 +100,7 @@ class DataAccessObject:
     def __insert_site_spectrum__(self, site_spectrum):
         sql = """INSERT INTO sitespectrums (siteid, readingdatetime, samplespersecond, nfft,
                                             samplingformat, fileid, created_at, updated_at)
-                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
+                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s) """
 
         array = site_spectrum.to_insert_array()
 
@@ -105,7 +112,7 @@ class DataAccessObject:
     def __update_site_spectrum__(self, site_spectrum):
         sql = """UPDATE sitespectrums
                  SET siteid = %s,
-                    readingdatetime = %s,
+                     readingdatetime = %s,
                      samplespersecond = %s,
                      nfft = %s,
                      samplingformat = %s,
@@ -115,14 +122,16 @@ class DataAccessObject:
                  WHERE id = %s """
 
         array = site_spectrum.to_insert_array()
-        array.append(site_spectrum.Id)
+        array = array + (site_spectrum.Id,)
+
+        print(array)
 
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
         self.DB.commit()
 
     def get_site_spectrum_data_reading(self, site_spectrum_id, frequency):
-        sql = """SELECT id, sitespectrumid, frequency, readingmagnitude
+        sql = """SELECT id, sitespectrumid, frequency, readingmagnitude, created_at, updated_at
                  FROM sitespectrumdata
                  WHERE sitespectrumid = %s
                  AND frequency = %s """
@@ -133,16 +142,11 @@ class DataAccessObject:
         row = cursor.fetchone()
 
         if row is not None:
-            station_reading = StationReading()
-            station_reading.load_from_row(row)
-            return station_reading
+            site_spectrum_reading = SiteSpectrumReading()
+            site_spectrum_reading.load_from_row(row)
+            return site_spectrum_reading
         else:
             return None
-
-    def get_site_spectrum_data_points(self, site_spectrum_id):
-        sql = """SELECT id, sitespectrumid, frequency, readingmagnitude
-                 FROM sitespectrumdata
-                 WHERE sitespectrumid = %s """
 
     def save_site_spectrum_reading(self, site_spectrum_reading):
         if site_spectrum_reading.Id == 0:
@@ -153,6 +157,7 @@ class DataAccessObject:
     def __insert_site_spectrum_reading__(self, site_spectrum_reading):
         sql = """INSERT INTO sitespectrumdata (sitespectrumid, frequency, readingmagnitude, created_at, updated_at)
                  VALUES (%s, %s, %s, %s, %s) """
+
         array = site_spectrum_reading.to_insert_array()
 
         cursor = self.DB.cursor()
@@ -170,7 +175,7 @@ class DataAccessObject:
                  WHERE id = %s """
 
         array = site_spectrum_reading.to_insert_array()
-        array.append(site_spectrum_reading.Id)
+        array = array + (site_spectrum_reading.Id, )
 
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
@@ -219,7 +224,7 @@ class DataAccessObject:
                  WHERE Id = %d"""
 
         array = station_reading.to_insert_array()
-        array.append(station_reading.Id)
+        array = array + (station_reading.Id,)
 
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
