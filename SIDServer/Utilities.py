@@ -9,6 +9,7 @@ from matplotlib.mlab import psd
 import h5py
 import os
 import zipfile
+import bz2
 
 
 class ConfigUtility:
@@ -180,8 +181,8 @@ class ZipUtility:
 
         head, tail = os.path.split(zip_archive_name)
 
-        zip_archive = zipfile.ZipFile(zip_archive_name, 'w')
-        zip_archive.write(file_to_zip, tail)
+        zip_archive = zipfile.ZipFile(zip_archive_name, 'w', compression=zipfile.ZIP_BZIP2)
+        zip_archive.write(file_to_zip, arcname=tail)
         zip_archive.close()
 
         os.remove(file_to_zip)
