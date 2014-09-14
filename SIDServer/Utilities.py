@@ -7,6 +7,8 @@ import math
 import numpy as np
 from matplotlib.mlab import psd
 import h5py
+import os
+import zipfile
 
 
 class ConfigUtility:
@@ -162,3 +164,28 @@ class DateUtility:
                                 last_seconds)
 
         return last_time + dt.timedelta(0, 5)
+
+
+class ZipUtility:
+
+    @staticmethod
+    def zip_file_and_delete_original(file_to_zip):
+
+        zip_archive_name = ""
+
+        if file_to_zip.endswith(".h5"):
+            zip_archive_name = file_to_zip.replace(".h5", ".zip")
+        else:
+            zip_archive_name = file_to_zip + ".zip"
+
+        head, tail = os.path.split(zip_archive_name)
+
+        zip_archive = zipfile.ZipFile(zip_archive_name, 'w')
+        zip_archive.write(file_to_zip, tail)
+        zip_archive.close()
+
+        os.remove(file_to_zip)
+
+        return zip_archive_name
+
+

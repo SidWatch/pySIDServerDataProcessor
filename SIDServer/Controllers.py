@@ -16,6 +16,7 @@ from SIDServer.Objects import SiteSpectrum
 from SIDServer.Utilities import HDF5Utility
 from SIDServer.Utilities import DateUtility
 from SIDServer.Utilities import FrequencyUtility
+from SIDServer.Utilities import ZipUtility
 from SIDServer.DatabaseAccess import DataAccessObject
 
 
@@ -72,17 +73,7 @@ class SendToSidWatchServerController:
                 if site is not None:
                     file = dao.get_file(file_name)
                     if file is None:
-                        file = File()
-                        file.Archived = False
-                        file.Available = False
-                        file.CreatedAt = dt.datetime.utcnow()
-                        file.UpdatedAt = file.CreatedAt
-                        file.FileName = file_name
-                        file.Processed = False
-                        file.SiteId = site.Id
-                        file.DateTime = created_time
-
-                        dao.save_file(file)
+                        file = self.build_new_file(dao, file_name, site.Id, created_time)
 
                     #process the stations
                     sg_keys = stations_group.keys()
@@ -97,14 +88,18 @@ class SendToSidWatchServerController:
                                                    frequency_spectrum_group,
                                                    frequency_spectrum_group[fsg_key])
 
-                    data_file.close()
-                    os.remove(working_file)
+                    #currently raw data isn't processed due to the size required.  It is made
+                    #available in the zipped hd5 files via S3 web sharing.
 
-                    print('Starting to move file in S3')
-                    key.copy(destination_bucket, '//{0}//{1}'.format(monitor_id, key.key), reduced_redundancy=False)
+                    data_file.close()
+
+                    #send the zipped archive to the destination
+                    self.send_processed_file(monitor_id, working_file, destination_bucket)
+
+                    #delete the archive from the source
                     source_bucket.delete_key(key.key)
 
-                    print('Moved file to output site')
+                    print('Processing complete on {0}'.format(file_name))
                 else:
                     print('Site {0} was not found'.format(monitor_id))
                     data_file.close()
@@ -117,7 +112,37 @@ class SendToSidWatchServerController:
         else:
             print('Bad user or password information provided.')
 
-        pass
+
+    def build_new_file(self, dao, file_name, site_id, created_time):
+        file = File()
+        file.Archived = False
+        file.Available = False
+        file.CreatedAt = dt.datetime.utcnow()
+        file.UpdatedAt = file.CreatedAt
+        file.FileName = file_name
+        file.Processed = False
+        file.SiteId = site_id
+        file.DateTime = created_time
+        dao.save_file(file)
+
+        return file
+
+    def send_processed_file(self, monitor_id, working_file, destination_bucket):
+        if working_file is not None:
+            zip_file_name = ZipUtility.zip_file_and_delete_original(working_file)
+
+            head, tail = os.path.split(zip_file_name)
+
+            print('Starting to move file to S3 ({0})'.format(tail))
+            item_key = Key(destination_bucket)
+            item_key.key = '//{0}//{1}'.format(monitor_id, tail)
+            item_key.set_contents_from_filename(zip_file_name)
+            print('Completed moving file to S3 ({0})'.format(tail))
+
+            os.remove(zip_file_name)
+            print('Removed local copy of file ({0})'.format(tail))
+        else:
+            print('Working file was not specified to zip and move ')
 
     def process_station(self, dao, file, group):
         print('Processing Station - {0}'.format(group.name))
@@ -217,7 +242,7 @@ class SendToSidWatchServerController:
             print('site spectrum not supplied')
 
     def save_site_spectrum_reading(self, dao, spectrum_id, frequency, reading_magnitude):
-        reading = dao.get_site_spectrum_data_reading(spectrum_id, np.asscalar(np.float64(frequency)))
+        reading = dao.get_site_spectrum_reading(spectrum_id, np.asscalar(np.float64(frequency)))
 
         if reading is None:
             reading = SiteSpectrumReading()

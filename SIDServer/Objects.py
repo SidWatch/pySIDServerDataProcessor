@@ -219,8 +219,8 @@ class SiteSpectrumReading:
 
     def to_insert_array(self):
         insert_array = (self.SiteSpectrumId,
-                        np.asscalar(np.float64(self.Frequency)),
-                        np.asscalar(np.float64(self.ReadingMagnitude)),
+                        round(np.asscalar(np.float64(self.Frequency)), 2),
+                        round(np.asscalar(np.float64(self.ReadingMagnitude)), 2),
                         self.CreatedAt,
                         self.UpdatedAt)
         return insert_array

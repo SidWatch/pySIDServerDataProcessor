@@ -2,6 +2,7 @@ __author__ = 'bnelson'
 
 import pymysql
 import datetime as dt
+import sys
 from SIDServer.Objects import Station
 from SIDServer.Objects import StationReading
 from SIDServer.Objects import Site
@@ -130,7 +131,7 @@ class DataAccessObject:
         cursor.execute(sql, array)
         self.DB.commit()
 
-    def get_site_spectrum_data_reading(self, site_spectrum_id, frequency):
+    def get_site_spectrum_reading(self, site_spectrum_id, frequency):
         sql = """SELECT id, sitespectrumid, frequency, readingmagnitude, created_at, updated_at
                  FROM sitespectrumdata
                  WHERE sitespectrumid = %s
@@ -158,12 +159,17 @@ class DataAccessObject:
         sql = """INSERT INTO sitespectrumdata (sitespectrumid, frequency, readingmagnitude, created_at, updated_at)
                  VALUES (%s, %s, %s, %s, %s) """
 
-        array = site_spectrum_reading.to_insert_array()
+        try:
+            array = site_spectrum_reading.to_insert_array()
 
-        cursor = self.DB.cursor()
-        cursor.execute(sql, array)
-        site_spectrum_reading.Id = cursor.lastrowid
-        self.DB.commit()
+            cursor = self.DB.cursor()
+            cursor.execute(sql, array)
+            site_spectrum_reading.Id = cursor.lastrowid
+            self.DB.commit()
+        except:
+            print(sys.exc_info())
+            raise
+
 
     def __update_site_spectrum_reading__(self, site_spectrum_reading):
         sql = """UPDATE sitespectrumdata
