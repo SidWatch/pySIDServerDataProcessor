@@ -2,3 +2,4 @@
 SIDServer/__pycache__/
 .idea/
 Temp/
+build/
