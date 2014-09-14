@@ -175,11 +175,11 @@ class ZipUtility:
         zip_archive_name = ""
 
         if file_to_zip.endswith(".h5"):
-            zip_archive_name = file_to_zip.replace(".h5", ".zip")
+            zip_archive_name = file_to_zip.replace(".h5", ".bz2")
         else:
-            zip_archive_name = file_to_zip + ".zip"
+            zip_archive_name = file_to_zip + ".bz2"
 
-        head, tail = os.path.split(zip_archive_name)
+        head, tail = os.path.split(file_to_zip)
 
         zip_archive = zipfile.ZipFile(zip_archive_name, 'w', compression=zipfile.ZIP_BZIP2)
         zip_archive.write(file_to_zip, arcname=tail)
