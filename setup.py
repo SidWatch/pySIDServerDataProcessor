@@ -5,7 +5,7 @@ from cx_Freeze import setup, Executable
 buildOptions = dict(
     packages=["os", "yaml", "boto", "numpy", "scipy", "matplotlib", "io", "zlib",
               "zipfile", "bz2", "math", "datetime", "dateutil", "time", "h5py"],
-    include_files=["SIDServer/","Config/sidwatch.cfg"],
+    include_files=["SIDServer/"],
     excludes=[]
 )
 
