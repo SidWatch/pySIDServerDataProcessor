@@ -5,18 +5,19 @@ from cx_Freeze import setup, Executable
 buildOptions = dict(
     packages=["os", "yaml", "boto", "numpy", "scipy", "matplotlib", "io", "zlib",
               "zipfile", "bz2", "math", "datetime", "dateutil", "time", "h5py"],
-    include_files=["SIDServer/"],
-    excludes=[],
+    include_files=['SIDServer/', 'ServiceHandler'],
+    excludes=[]
 )
 
 base = 'Console'
 
 executables = [
-    Executable('SidServerDataProcessor.py', base=base)
+    Executable('SidServerDataProcessor.py', base='Win32Service', targetName='SidServerDataProcessorService.exe')
 ]
 
-setup(name='pySidServerDataProcessor',
+setup(name='pySidServerDataProcessorService',
       version='0.1.0.0',
-      description='SID Server Data Processor',
+      description='SID Server Data Processor Service',
       options=dict(build_exe=buildOptions),
       executables=executables)
+
