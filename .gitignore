@@ -2,7 +2,7 @@
 SIDServer/__pycache__/
 .idea/
 Temp/
-build/
 source/SIDServer/__pycache__/
 source/Config/
 Installers/
+build/Output/
