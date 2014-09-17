@@ -29,7 +29,7 @@ class DataAccessObject:
     def get_file(self, filename):
         sql = """SELECT id, siteid, datetime, filename, processed, archived, available,
                        created_at, updated_at
-                FROM Files
+                FROM files
                 WHERE filename = %s"""
 
         cursor = self.DB.cursor()
@@ -50,7 +50,7 @@ class DataAccessObject:
             self.__update_file__(file)
 
     def __insert_file__(self, file):
-        sql = """INSERT INTO Files (siteid, datetime, filename, processed, archived, available, created_at, updated_at)
+        sql = """INSERT INTO files (siteid, datetime, filename, processed, archived, available, created_at, updated_at)
                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
 
         array = file.to_insert_array()
@@ -61,7 +61,7 @@ class DataAccessObject:
         self.DB.commit()
 
     def __update_file__(self, file):
-        sql = """UPDATE Files
+        sql = """UPDATE files
                  SET siteid = %s, datetime = %s, filename=%s, processed = %s, archived = %s,
                      available = %s, created_at = %s, updated_at = %s
                  WHERE id = %d """
@@ -213,7 +213,7 @@ class DataAccessObject:
             self.__update_station_reading__(station_reading)
 
     def __insert_station_reading__(self, station_reading):
-        sql = """INSERT INTO StationReadings (siteid, stationid, readingdatetime, readingmagnitude, fileid,
+        sql = """INSERT INTO stationreadings (siteid, stationid, readingdatetime, readingmagnitude, fileid,
                                             created_at, updated_at)
                  VALUES (%s, %s, %s, %s, %s, %s, %s) """
         array = station_reading.to_insert_array()
@@ -224,7 +224,7 @@ class DataAccessObject:
         self.DB.commit()
 
     def __update_station_reading__(self, station_reading):
-        sql = """UPDATE StationReadings
+        sql = """UPDATE stationreadings
                  SET siteid = %d, stationid = %d, readingdatetime = %s, readingmagnitude = %d,
                      fileid = %d, created_at = %s, updated_at = %s
                  WHERE Id = %d"""
@@ -238,7 +238,7 @@ class DataAccessObject:
 
     def get_station(self, station_callsign):
         sql = """SELECT id, callsign, country, location, notes, frequency, latitude, longitude, created_at, updated_at
-              FROM Stations WHERE callsign = %s """
+              FROM stations WHERE callsign = %s """
 
         cursor = self.DB.cursor()
         cursor.execute(sql, station_callsign)
@@ -253,7 +253,7 @@ class DataAccessObject:
 
     def get_site(self, monitor_id):
         sql = """SELECT id, monitorid, name, timezone, utcoffset, latitude, longitude, created_at, updated_at
-              FROM Sites WHERE monitorid = %s """
+              FROM sites WHERE monitorid = %s """
 
         cursor = self.DB.cursor()
         cursor.execute(sql, monitor_id)
