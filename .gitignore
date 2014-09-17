@@ -6,3 +6,4 @@ source/SIDServer/__pycache__/
 source/Config/
 Installers/
 build/Output/
+build/bin/

@@ -82,7 +82,7 @@ FALSE
 FALSE
 0
 +
-New component
+SidWatch Server Data Processor
 0
 TRUE
 TRUE
@@ -98,7 +98,7 @@ FALSE
 +
 D:\SourceCode\Other\SidWatch\pySidServerDataProcessor\build\Config\sidwatch.cfg
 3
-1
+2
 TRUE
 TRUE
 FALSE
@@ -8465,7 +8465,17 @@ FALSE
 FALSE
 
 http://www.deploymaster.com/dotnetfx.html
-0
+1
+Microsoft Visual C++ 2010 Redistributables
+http://data.sidwatch.com/installs/vcredist_x86.exe
+TRUE
+FALSE
+D:\SourceCode\Other\SidWatch\pySidWatch\build\bin\vcredist_x86.exe
+
+
+
+
+c:\windows\system32\msvcr100.dll
 TRUE
 FALSE
 TRUE
