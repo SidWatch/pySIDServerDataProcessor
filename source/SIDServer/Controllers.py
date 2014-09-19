@@ -179,6 +179,8 @@ class SendToSidWatchServerController:
                     dao.save_station_reading(reading)
 
                     print('Processing Station {0}: Time - {1}: Strength - {2}'.format(callsign, time, signal_strength))
+
+                dao.DB.commit()
             else:
                 print('Station is not found in database')
         else:
@@ -186,6 +188,8 @@ class SendToSidWatchServerController:
 
     def process_site_spectrum(self, dao, file, group, dataset):
         print('Processing Frequency Spectrum Dataset - {0}'.format(dataset.name))
+
+        insert_only = False
 
         if file is not None:
             if dataset is not None:
@@ -203,6 +207,7 @@ class SendToSidWatchServerController:
                     site_spectrum.FileId = file.Id
                     site_spectrum.CreatedAt = dt.datetime.utcnow()
                     site_spectrum.UpdatedAt = site_spectrum.CreatedAt
+                    insert_only = True
                 else:
                     site_spectrum.UpdatedAt = dt.datetime.utcnow()
 
@@ -212,13 +217,15 @@ class SendToSidWatchServerController:
 
                 dao.save_site_spectrum(site_spectrum)
 
-                self.process_site_spectrum_data(dao, site_spectrum, dataset)
+                self.process_site_spectrum_data(dao, site_spectrum, dataset, insert_only)
+
+                dao.DB.commit()
             else:
                 print('Dataset not supplied')
         else:
             print('File was not supplied')
 
-    def process_site_spectrum_data(self, dao, site_spectrum, dataset):
+    def process_site_spectrum_data(self, dao, site_spectrum, dataset, insert_only):
         if site_spectrum is not None:
             if dataset is not None:
                 shape = dataset.shape
@@ -229,11 +236,29 @@ class SendToSidWatchServerController:
                 if rows == 2:
                     width = shape[1]
 
-                    for x in range(0, width):
-                        frequency = array[0, x]
-                        reading = array[1, x]
+                    if insert_only:
+                        bulk_data = []
 
-                        self.save_site_spectrum_reading(dao, site_spectrum.Id, frequency, reading)
+                        for x in range(0, width):
+                            frequency = array[0, x]
+                            reading_magnitude = array[1, x]
+
+                            reading = SiteSpectrumReading()
+                            reading.Id = 0
+                            reading.SiteSpectrumId = site_spectrum.Id
+                            reading.CreatedAt = dt.datetime.utcnow()
+                            reading.UpdatedAt = reading.CreatedAt
+                            reading.Frequency = frequency
+                            reading.ReadingMagnitude = reading_magnitude
+                            bulk_data.append(reading.to_insert_array())
+
+                        dao.insert_many_site_spectrum_reading(bulk_data)
+                    else:
+                        for x in range(0, width):
+                            frequency = array[0, x]
+                            reading = array[1, x]
+
+                            self.save_site_spectrum_reading(dao, site_spectrum.Id, frequency, reading, insert_only)
                 else:
                     print('Frequency Spectrum data set not the correct shape')
             else:
@@ -241,8 +266,12 @@ class SendToSidWatchServerController:
         else:
             print('site spectrum not supplied')
 
-    def save_site_spectrum_reading(self, dao, spectrum_id, frequency, reading_magnitude):
-        reading = dao.get_site_spectrum_reading(spectrum_id, np.asscalar(np.float64(frequency)))
+    def save_site_spectrum_reading(self, dao, spectrum_id, frequency, reading_magnitude, insert_only):
+
+        reading = None
+
+        if not insert_only:
+            reading = dao.get_site_spectrum_reading(spectrum_id, np.asscalar(np.float64(frequency)))
 
         if reading is None:
             reading = SiteSpectrumReading()

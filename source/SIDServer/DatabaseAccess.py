@@ -108,7 +108,7 @@ class DataAccessObject:
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
         site_spectrum.Id = cursor.lastrowid
-        self.DB.commit()
+        #self.DB.commit()
 
     def __update_site_spectrum__(self, site_spectrum):
         sql = """UPDATE sitespectrums
@@ -129,7 +129,7 @@ class DataAccessObject:
 
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
-        self.DB.commit()
+        #self.DB.commit()
 
     def get_site_spectrum_reading(self, site_spectrum_id, frequency):
         sql = """SELECT id, sitespectrumid, frequency, readingmagnitude, created_at, updated_at
@@ -164,8 +164,21 @@ class DataAccessObject:
 
             cursor = self.DB.cursor()
             cursor.execute(sql, array)
-            site_spectrum_reading.Id = cursor.lastrowid
-            self.DB.commit()
+            #site_spectrum_reading.Id = cursor.lastrowid
+            #self.DB.commit()
+        except:
+            print(sys.exc_info())
+            raise
+
+    def insert_many_site_spectrum_reading(self, site_spectrum_reading_data):
+        sql = """INSERT INTO sitespectrumdata (sitespectrumid, frequency, readingmagnitude, created_at, updated_at)
+                 VALUES (%s, %s, %s, %s, %s) """
+
+        try:
+            cursor = self.DB.cursor()
+            cursor.executemany(sql, site_spectrum_reading_data)
+            #site_spectrum_reading.Id = cursor.lastrowid
+            #self.DB.commit()
         except:
             print(sys.exc_info())
             raise
@@ -185,7 +198,7 @@ class DataAccessObject:
 
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
-        self.DB.commit()
+        #self.DB.commit()
 
     def get_station_reading(self, site_id, station_id, reading_datetime):
         sql = """SELECT id, siteid, stationid, readingdatetime, readingmagnitude, fileid, created_at, updated_at
@@ -220,8 +233,8 @@ class DataAccessObject:
 
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
-        station_reading.Id = cursor.lastrowid
-        self.DB.commit()
+        #station_reading.Id = cursor.lastrowid
+        #self.DB.commit()
 
     def __update_station_reading__(self, station_reading):
         sql = """UPDATE stationreadings
@@ -234,7 +247,7 @@ class DataAccessObject:
 
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
-        self.DB.commit()
+        #self.DB.commit()
 
     def get_station(self, station_callsign):
         sql = """SELECT id, callsign, country, location, notes, frequency, latitude, longitude, created_at, updated_at
