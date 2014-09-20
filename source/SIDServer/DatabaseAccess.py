@@ -183,6 +183,15 @@ class DataAccessObject:
             print(sys.exc_info())
             raise
 
+    def save_many_site_spectrum_reading(self, site_spectrum_reading_data):
+        sql = """call p_SaveSpectrumData(%s, %s, %s, %s, %s); """
+
+        try:
+            cursor = self.DB.cursor()
+            cursor.executemany(sql, site_spectrum_reading_data)
+        except:
+            print(sys.exc_info())
+            raise
 
     def __update_site_spectrum_reading__(self, site_spectrum_reading):
         sql = """UPDATE sitespectrumdata
