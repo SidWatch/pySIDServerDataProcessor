@@ -236,6 +236,16 @@ class DataAccessObject:
         #station_reading.Id = cursor.lastrowid
         #self.DB.commit()
 
+    def save_many_station_reading(self, station_reading_data):
+        sql = """call p_SaveStationReading(%s, %s, %s, %s, %s, %s, %s);"""
+
+        try:
+            cursor = self.DB.cursor()
+            cursor.executemany(sql, station_reading_data)
+        except:
+            print(sys.exc_info())
+            raise
+
     def __update_station_reading__(self, station_reading):
         sql = """UPDATE stationreadings
                  SET siteid = %d, stationid = %d, readingdatetime = %s, readingmagnitude = %d,

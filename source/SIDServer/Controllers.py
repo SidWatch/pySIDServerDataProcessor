@@ -106,6 +106,8 @@ class SendToSidWatchServerController:
                     #need to move to process later since site doesn't exist
 
                 dao.close()
+                print('Sleeping for a bit to let server rest.')
+                threadtime.sleep(30)
 
             print('Sleeping for 60 seconds')
             threadtime.sleep(60)
@@ -156,30 +158,29 @@ class SendToSidWatchServerController:
 
                 ds_keys = group.keys()
 
+                bulk_data = []
+
                 for sg_key in ds_keys:
                     dataset = group[sg_key]
                     time = dataset.attrs['Time']
+
+                    rdt = dateutil.parser.parse(time)
+                    #rdt = dateutil.parser.parse(time).replace(microsecond=0)
                     signal_strength = dataset[0]
 
-                    reading = dao.get_station_reading(file.SiteId, station.Id, time)
-
-                    if reading is None:
-                        reading = StationReading()
-                        reading.SiteId = file.SiteId
-                        reading.StationId = station.Id
-                        reading.ReadingDateTime = time
-                        reading.FileId = file.Id
-                        reading.CreatedAt = dt.datetime.utcnow()
-                        reading.UpdatedAt = reading.CreatedAt
-                    else:
-                        reading.UpdatedAt = dt.datetime.utcnow()
-
+                    reading = StationReading()
+                    reading.SiteId = file.SiteId
+                    reading.StationId = station.Id
+                    reading.ReadingDateTime = rdt
+                    reading.FileId = file.Id
+                    reading.CreatedAt = dt.datetime.utcnow()
+                    reading.UpdatedAt = reading.CreatedAt
                     reading.ReadingMagnitude = signal_strength
+                    bulk_data.append(reading.to_insert_array())
 
-                    dao.save_station_reading(reading)
-
-                    print('Processing Station {0}: Time - {1}: Strength - {2}'.format(callsign, time, signal_strength))
-
+                print('Processing Station {0}: Count - {1}'.format(callsign, len(bulk_data)))
+                dao.save_many_station_reading(bulk_data)
+                
                 dao.DB.commit()
             else:
                 print('Station is not found in database')
