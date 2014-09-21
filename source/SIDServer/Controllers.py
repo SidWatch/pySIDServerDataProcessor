@@ -107,7 +107,7 @@ class SendToSidWatchServerController:
 
                 dao.close()
                 print('Sleeping for a bit to let server rest.')
-                threadtime.sleep(30)
+                threadtime.sleep(1)
 
             print('Sleeping for 60 seconds')
             threadtime.sleep(60)
@@ -243,13 +243,11 @@ class SendToSidWatchServerController:
                         reading = SiteSpectrumReading()
                         reading.Id = 0
                         reading.SiteSpectrumId = site_spectrum.Id
-                        reading.CreatedAt = dt.datetime.utcnow()
-                        reading.UpdatedAt = reading.CreatedAt
                         reading.Frequency = frequency
                         reading.ReadingMagnitude = reading_magnitude
                         bulk_data.append(reading.to_insert_array())
 
-                    dao.insert_many_site_spectrum_reading(bulk_data)
+                    dao.save_many_site_spectrum_reading(bulk_data)
                 else:
                     print('Frequency Spectrum data set not the correct shape')
             else:

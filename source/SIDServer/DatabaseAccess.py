@@ -184,7 +184,7 @@ class DataAccessObject:
             raise
 
     def save_many_site_spectrum_reading(self, site_spectrum_reading_data):
-        sql = """call p_SaveSpectrumData(%s, %s, %s, %s, %s); """
+        sql = """call p_SaveSpectrumData(%s, %s, %s); """
 
         try:
             cursor = self.DB.cursor()

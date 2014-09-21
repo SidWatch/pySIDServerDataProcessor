@@ -206,23 +206,17 @@ class SiteSpectrumReading:
         self.SiteSpectrumId = 0
         self.Frequency = 0.0
         self.ReadingMagnitude = 0.0
-        self.CreatedAt = None
-        self.UpdatedAt = None
 
     def load_from_row(self, row):
         self.Id = row[0]
         self.SiteSpectrumId = row[1]
         self.Frequency = row[2]
         self.ReadingMagnitude = row[3]
-        self.CreatedAt = row[4]
-        self.UpdatedAt = row[5]
 
     def to_insert_array(self):
         insert_array = (self.SiteSpectrumId,
                         round(np.asscalar(np.float64(self.Frequency)), 2),
-                        round(np.asscalar(np.float64(self.ReadingMagnitude)), 2),
-                        self.CreatedAt,
-                        self.UpdatedAt)
+                        round(np.asscalar(np.float64(self.ReadingMagnitude)), 2))
         return insert_array
 
 
