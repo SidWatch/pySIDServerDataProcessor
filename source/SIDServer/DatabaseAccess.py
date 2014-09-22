@@ -9,6 +9,7 @@ from SIDServer.Objects import Site
 from SIDServer.Objects import File
 from SIDServer.Objects import SiteSpectrum
 from SIDServer.Objects import SiteSpectrumReading
+from SIDServer.Utilities import PrintHelper
 
 
 class DataAccessObject:
@@ -22,6 +23,7 @@ class DataAccessObject:
                                   db=self.Config.SidWatchDatabase.Database,
                                   user=self.Config.SidWatchDatabase.User,
                                   passwd=self.Config.SidWatchDatabase.Password)
+        self.DB.autocommit(True)
 
     def close(self):
         self.DB.close()
@@ -94,9 +96,9 @@ class DataAccessObject:
 
     def save_site_spectrum(self, site_spectrum):
         if site_spectrum.Id == 0:
-            self.__insert_site_spectrum__(site_spectrum)
+            return self.__insert_site_spectrum__(site_spectrum)
         else:
-            self.__update_site_spectrum__(site_spectrum)
+            return self.__update_site_spectrum__(site_spectrum)
 
     def __insert_site_spectrum__(self, site_spectrum):
         sql = """INSERT INTO sitespectrums (siteid, readingdatetime, samplespersecond, nfft,
@@ -108,7 +110,13 @@ class DataAccessObject:
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
         site_spectrum.Id = cursor.lastrowid
-        #self.DB.commit()
+        return site_spectrum.Id
+
+    def delete_site_spectrum_data(self, site_spectrum_id):
+        sql = """DELETE FROM sitespectrumdata where sitespectrumid = %s;"""
+
+        cursor = self.DB.cursor()
+        cursor.execute(sql, (site_spectrum_id,))
 
     def __update_site_spectrum__(self, site_spectrum):
         sql = """UPDATE sitespectrums
@@ -125,11 +133,9 @@ class DataAccessObject:
         array = site_spectrum.to_insert_array()
         array = array + (site_spectrum.Id,)
 
-        print(array)
-
         cursor = self.DB.cursor()
         cursor.execute(sql, array)
-        #self.DB.commit()
+        return site_spectrum.Id
 
     def get_site_spectrum_reading(self, site_spectrum_id, frequency):
         sql = """SELECT id, sitespectrumid, frequency, readingmagnitude, created_at, updated_at
@@ -149,65 +155,23 @@ class DataAccessObject:
         else:
             return None
 
-    def save_site_spectrum_reading(self, site_spectrum_reading):
-        if site_spectrum_reading.Id == 0:
-            self.__insert_site_spectrum_reading__(site_spectrum_reading)
-        else:
-            self.__update_site_spectrum_reading__(site_spectrum_reading)
-
-    def __insert_site_spectrum_reading__(self, site_spectrum_reading):
-        sql = """INSERT INTO sitespectrumdata (sitespectrumid, frequency, readingmagnitude, created_at, updated_at)
-                 VALUES (%s, %s, %s, %s, %s) """
-
-        try:
-            array = site_spectrum_reading.to_insert_array()
-
-            cursor = self.DB.cursor()
-            cursor.execute(sql, array)
-            #site_spectrum_reading.Id = cursor.lastrowid
-            #self.DB.commit()
-        except:
-            print(sys.exc_info())
-            raise
-
-    def insert_many_site_spectrum_reading(self, site_spectrum_reading_data):
-        sql = """INSERT INTO sitespectrumdata (sitespectrumid, frequency, readingmagnitude, created_at, updated_at)
-                 VALUES (%s, %s, %s, %s, %s) """
-
-        try:
-            cursor = self.DB.cursor()
-            cursor.executemany(sql, site_spectrum_reading_data)
-            #site_spectrum_reading.Id = cursor.lastrowid
-            #self.DB.commit()
-        except:
-            print(sys.exc_info())
-            raise
-
     def save_many_site_spectrum_reading(self, site_spectrum_reading_data):
-        sql = """call p_SaveSpectrumData(%s, %s, %s); """
+        sql = "INSERT INTO sitespectrumdata (sitespectrumid, frequency, readingmagnitude) VALUES ({0}, {1}, {2});"
 
         try:
+            str_list = ["SET autocommit=0;SET unique_checks=0;SET foreign_key_checks=0;"]
+
+            for data_row in site_spectrum_reading_data:
+                str_list.append(sql.format(data_row[0], data_row[1], data_row[2]))
+
+            str_list.append("SET autocommit=1;SET unique_checks=1;SET foreign_key_checks=1;")
+
+            sql_statement = ''.join(str_list)
             cursor = self.DB.cursor()
-            cursor.executemany(sql, site_spectrum_reading_data)
+            cursor.execute(sql_statement)
         except:
-            print(sys.exc_info())
+            PrintHelper.print(sys.exc_info())
             raise
-
-    def __update_site_spectrum_reading__(self, site_spectrum_reading):
-        sql = """UPDATE sitespectrumdata
-                 SET sitespectrumid = %s,
-                     frequency = %s,
-                     readingmagnitude = %s,
-                     created_at = %s,
-                     updated_at = %s
-                 WHERE id = %s """
-
-        array = site_spectrum_reading.to_insert_array()
-        array = array + (site_spectrum_reading.Id, )
-
-        cursor = self.DB.cursor()
-        cursor.execute(sql, array)
-        #self.DB.commit()
 
     def get_station_reading(self, site_id, station_id, reading_datetime):
         sql = """SELECT id, siteid, stationid, readingdatetime, readingmagnitude, fileid, created_at, updated_at
@@ -228,45 +192,23 @@ class DataAccessObject:
         else:
             return None
 
-    def save_station_reading(self, station_reading):
-        if station_reading.Id == 0:
-            self.__insert_station_reading__(station_reading)
-        else:
-            self.__update_station_reading__(station_reading)
-
-    def __insert_station_reading__(self, station_reading):
-        sql = """INSERT INTO stationreadings (siteid, stationid, readingdatetime, readingmagnitude, fileid,
-                                            created_at, updated_at)
-                 VALUES (%s, %s, %s, %s, %s, %s, %s) """
-        array = station_reading.to_insert_array()
-
-        cursor = self.DB.cursor()
-        cursor.execute(sql, array)
-        #station_reading.Id = cursor.lastrowid
-        #self.DB.commit()
-
     def save_many_station_reading(self, station_reading_data):
-        sql = """call p_SaveStationReading(%s, %s, %s, %s, %s, %s, %s);"""
+        sql = """call p_SaveStationReading({0}, {1}, '{2}', {3}, {4}, '{5}', '{6}');"""
 
         try:
+            str_list = ["SET autocommit=0;SET unique_checks=0;SET foreign_key_checks=0;"]
+
+            for data_row in station_reading_data:
+                str_list.append(sql.format(data_row[0], data_row[1], data_row[2], data_row[3], data_row[4],
+                                           data_row[5], data_row[6]))
+            str_list.append("SET autocommit=1;SET unique_checks=1;SET foreign_key_checks=1;")
+
+            sql_statement = ''.join(str_list)
             cursor = self.DB.cursor()
-            cursor.executemany(sql, station_reading_data)
+            cursor.execute(sql_statement)
         except:
-            print(sys.exc_info())
+            PrintHelper.print(sys.exc_info())
             raise
-
-    def __update_station_reading__(self, station_reading):
-        sql = """UPDATE stationreadings
-                 SET siteid = %d, stationid = %d, readingdatetime = %s, readingmagnitude = %d,
-                     fileid = %d, created_at = %s, updated_at = %s
-                 WHERE Id = %d"""
-
-        array = station_reading.to_insert_array()
-        array = array + (station_reading.Id,)
-
-        cursor = self.DB.cursor()
-        cursor.execute(sql, array)
-        #self.DB.commit()
 
     def get_station(self, station_callsign):
         sql = """SELECT id, callsign, country, location, notes, frequency, latitude, longitude, created_at, updated_at

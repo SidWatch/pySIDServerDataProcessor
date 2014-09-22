@@ -17,6 +17,7 @@ from SIDServer.Utilities import HDF5Utility
 from SIDServer.Utilities import DateUtility
 from SIDServer.Utilities import FrequencyUtility
 from SIDServer.Utilities import ZipUtility
+from SIDServer.Utilities import PrintHelper
 from SIDServer.DatabaseAccess import DataAccessObject
 
 
@@ -38,7 +39,7 @@ class SendToSidWatchServerController:
         temp_folder = self.Config.SidWatchServer.TempFolder
 
         while not self.Done:
-            print('Checking for files')
+            PrintHelper.print('Checking for files', 1)
 
             connection = S3Connection(access_key, secret_key, calling_format=OrdinaryCallingFormat())
             destination_bucket = connection.get_bucket(destination_bucket_name)
@@ -50,10 +51,10 @@ class SendToSidWatchServerController:
                 file_name = key.key
                 working_file = temp_folder + file_name
 
-                print('Downloading {0}'.format(file_name))
+                PrintHelper.print('Downloading {0}'.format(file_name), 1)
                 key.get_contents_to_filename(working_file)
 
-                print('Processing {0}'.format(file_name))
+                PrintHelper.print('Processing {0}'.format(file_name))
                 result = HDF5Utility.read_file(working_file)
 
                 #Create a file record
@@ -99,21 +100,19 @@ class SendToSidWatchServerController:
                     #delete the archive from the source
                     source_bucket.delete_key(key.key)
 
-                    print('Processing complete on {0}'.format(file_name))
+                    PrintHelper.print('Processing complete on {0}'.format(file_name), 1)
                 else:
-                    print('Site {0} was not found'.format(monitor_id))
+                    PrintHelper.print('Site {0} was not found'.format(monitor_id))
                     data_file.close()
                     #need to move to process later since site doesn't exist
 
+                dao.DB.commit()
                 dao.close()
-                print('Sleeping for a bit to let server rest.')
-                threadtime.sleep(1)
 
-            print('Sleeping for 60 seconds')
+            PrintHelper.print('Sleeping for 60 seconds', 1)
             threadtime.sleep(60)
         else:
-            print('Bad user or password information provided.')
-
+            PrintHelper.print('Bad user or password information provided.', 4)
 
     def build_new_file(self, dao, file_name, site_id, created_time):
         file = File()
@@ -135,27 +134,23 @@ class SendToSidWatchServerController:
 
             head, tail = os.path.split(zip_file_name)
 
-            print('Starting to move file to S3 ({0})'.format(tail))
+            PrintHelper.print('Starting to move file to S3 ({0})'.format(tail))
             item_key = Key(destination_bucket)
             item_key.key = '//{0}//{1}'.format(monitor_id, tail)
             item_key.set_contents_from_filename(zip_file_name)
-            print('Completed moving file to S3 ({0})'.format(tail))
+            PrintHelper.print('Completed moving file to S3 ({0})'.format(tail))
 
             os.remove(zip_file_name)
-            print('Removed local copy of file ({0})'.format(tail))
+            PrintHelper.print('Removed local copy of file ({0})'.format(tail))
         else:
-            print('Working file was not specified to zip and move ')
+            PrintHelper.print('Working file was not specified to zip and move ')
 
     def process_station(self, dao, file, group):
-        print('Processing Station - {0}'.format(group.name))
-
         callsign = group.attrs["CallSign"]
         station = dao.get_station(callsign)
 
         if file is not None:
             if station is not None:
-                print('StationId : {0}, SiteId : {1}'.format(station.Id, file.SiteId))
-
                 ds_keys = group.keys()
 
                 bulk_data = []
@@ -165,7 +160,6 @@ class SendToSidWatchServerController:
                     time = dataset.attrs['Time']
 
                     rdt = dateutil.parser.parse(time)
-                    #rdt = dateutil.parser.parse(time).replace(microsecond=0)
                     signal_strength = dataset[0]
 
                     reading = StationReading()
@@ -178,17 +172,17 @@ class SendToSidWatchServerController:
                     reading.ReadingMagnitude = signal_strength
                     bulk_data.append(reading.to_insert_array())
 
-                print('Processing Station {0}: Count - {1}'.format(callsign, len(bulk_data)))
+                PrintHelper.print('Processing Station {0}: Count - {1}'.format(callsign, len(bulk_data)),1)
                 dao.save_many_station_reading(bulk_data)
                 
                 dao.DB.commit()
             else:
-                print('Station is not found in database')
+                PrintHelper.print('Station is not found in database')
         else:
-            print('File was not supplied')
+            PrintHelper.print('File was not supplied')
 
     def process_site_spectrum(self, dao, file, group, dataset):
-        print('Processing Frequency Spectrum Dataset - {0}'.format(dataset.name))
+        PrintHelper.print('Processing Frequency Spectrum Dataset - {0}'.format(dataset.name), 1)
 
         if file is not None:
             if dataset is not None:
@@ -209,19 +203,26 @@ class SendToSidWatchServerController:
                 else:
                     site_spectrum.UpdatedAt = dt.datetime.utcnow()
 
+                    PrintHelper.print("Deleting old data")
+                    dao.delete_site_spectrum_data(site_spectrum.Id)
+                    dao.DB.commit()
+                    PrintHelper.print("Delete complete")
+
                 site_spectrum.NFFT = int(group.attrs.get('NFFT', 1024))
                 site_spectrum.SamplesPerSeconds = int(group.attrs.get('SamplingRate', 96000))
                 site_spectrum.SamplingFormat = int(group.attrs.get('SamplingFormat', 24))
 
-                dao.save_site_spectrum(site_spectrum)
+                PrintHelper.print("Spectrum save started")
+                site_spectrum.Id = dao.save_site_spectrum(site_spectrum)
+                dao.DB.commit()
+                PrintHelper.print("Spectrum save complete")
 
                 self.process_site_spectrum_data(dao, site_spectrum, dataset)
-
                 dao.DB.commit()
             else:
-                print('Dataset not supplied')
+                PrintHelper.print('Dataset not supplied')
         else:
-            print('File was not supplied')
+           PrintHelper. print('File was not supplied')
 
     def process_site_spectrum_data(self, dao, site_spectrum, dataset):
         if site_spectrum is not None:
@@ -245,36 +246,18 @@ class SendToSidWatchServerController:
                         reading.SiteSpectrumId = site_spectrum.Id
                         reading.Frequency = frequency
                         reading.ReadingMagnitude = reading_magnitude
-                        bulk_data.append(reading.to_insert_array())
+                        reading_data = reading.to_insert_array()
+                        bulk_data.append(reading_data)
 
+                    PrintHelper.print("Spectrum bulk insert beginning")
                     dao.save_many_site_spectrum_reading(bulk_data)
+                    PrintHelper.print("Spectrum bulk insert complete")
                 else:
-                    print('Frequency Spectrum data set not the correct shape')
+                    PrintHelper.print('Frequency Spectrum data set not the correct shape')
             else:
-                print('Dataset not supplied')
+                PrintHelper.print('Dataset not supplied')
         else:
-            print('site spectrum not supplied')
-
-    def save_site_spectrum_reading(self, dao, spectrum_id, frequency, reading_magnitude, insert_only):
-
-        reading = None
-
-        if not insert_only:
-            reading = dao.get_site_spectrum_reading(spectrum_id, np.asscalar(np.float64(frequency)))
-
-        if reading is None:
-            reading = SiteSpectrumReading()
-            reading.Id = 0
-            reading.SiteSpectrumId = spectrum_id
-            reading.CreatedAt = dt.datetime.utcnow()
-            reading.UpdatedAt = reading.CreatedAt
-        else:
-            reading.UpdatedAt = dt.datetime.utcnow()
-
-        reading.Frequency = frequency
-        reading.ReadingMagnitude = reading_magnitude
-
-        dao.save_site_spectrum_reading(reading)
+            PrintHelper.print('site spectrum not supplied')
 
     def stop(self):
         self.Done = True

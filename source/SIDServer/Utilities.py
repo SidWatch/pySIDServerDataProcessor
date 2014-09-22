@@ -11,6 +11,20 @@ import os
 import zipfile
 import bz2
 
+class PrintHelper:
+    def __init__(self):
+        """
+        """
+
+    @staticmethod
+    def print_level():
+        return 1
+
+    @staticmethod
+    def print(message, level=0):
+        if level >= PrintHelper.print_level():
+            print("{0} : {1}".format(dt.datetime.now(), message))
+
 
 class ConfigUtility:
     def __init__(self):
@@ -23,9 +37,7 @@ class ConfigUtility:
         stream = io.open(filename, mode="r")
 
         config_dictionary = yaml.load(stream)
-
         config = Objects.Config(config_dictionary)
-
         return config
 
 
