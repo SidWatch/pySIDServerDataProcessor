@@ -52,6 +52,7 @@ class SendToSidWatchServerController:
                 working_file = temp_folder + file_name
 
                 PrintHelper.print('Downloading {0}'.format(file_name), 1)
+
                 key.get_contents_to_filename(working_file)
 
                 PrintHelper.print('Processing {0}'.format(file_name))
@@ -87,10 +88,12 @@ class SendToSidWatchServerController:
                         self.process_site_spectrum(dao,
                                                    file,
                                                    frequency_spectrum_group,
-                                                   frequency_spectrum_group[fsg_key])
+                                                   frequency_spectrum_group[fsg_key],
+                                                   destination_bucket)
 
                     #currently raw data isn't processed due to the size required.  It is made
                     #available in the zipped hd5 files via S3 web sharing.
+
 
                     data_file.close()
 
@@ -174,14 +177,13 @@ class SendToSidWatchServerController:
 
                 PrintHelper.print('Processing Station {0}: Count - {1}'.format(callsign, len(bulk_data)),1)
                 dao.save_many_station_reading(bulk_data)
-                
                 dao.DB.commit()
             else:
                 PrintHelper.print('Station is not found in database')
         else:
             PrintHelper.print('File was not supplied')
 
-    def process_site_spectrum(self, dao, file, group, dataset):
+    def process_site_spectrum(self, dao, file, group, dataset, destination_bucket):
         PrintHelper.print('Processing Frequency Spectrum Dataset - {0}'.format(dataset.name), 1)
 
         if file is not None:
@@ -203,11 +205,6 @@ class SendToSidWatchServerController:
                 else:
                     site_spectrum.UpdatedAt = dt.datetime.utcnow()
 
-                    PrintHelper.print("Deleting old data")
-                    dao.delete_site_spectrum_data(site_spectrum.Id)
-                    dao.DB.commit()
-                    PrintHelper.print("Delete complete")
-
                 site_spectrum.NFFT = int(group.attrs.get('NFFT', 1024))
                 site_spectrum.SamplesPerSeconds = int(group.attrs.get('SamplingRate', 96000))
                 site_spectrum.SamplingFormat = int(group.attrs.get('SamplingFormat', 24))
@@ -215,14 +212,56 @@ class SendToSidWatchServerController:
                 PrintHelper.print("Spectrum save started")
                 site_spectrum.Id = dao.save_site_spectrum(site_spectrum)
                 dao.DB.commit()
+                PrintHelper.print("SiteSpectrumId - {0}".format(site_spectrum.Id), 1)
                 PrintHelper.print("Spectrum save complete")
 
-                self.process_site_spectrum_data(dao, site_spectrum, dataset)
-                dao.DB.commit()
+                self.process_site_spectrum_data_to_json(destination_bucket, site_spectrum, dataset)
             else:
                 PrintHelper.print('Dataset not supplied')
         else:
            PrintHelper. print('File was not supplied')
+
+    def process_site_spectrum_data_to_json(self, destination_bucket, site_spectrum, dataset):
+        if site_spectrum is not None:
+            if dataset is not None:
+                shape = dataset.shape
+                array = np.zeros(shape)
+                dataset.read_direct(array)
+                rows = shape[0]
+
+                if rows == 2:
+                    width = shape[1]
+
+                    json_open = '{' + '"SpectrumId":{0}, "SpectrumData":'.format(site_spectrum.Id) + '{'
+
+                    bulk_data = [json_open]
+
+                    for x in range(0, width):
+                        frequency = array[0, x]
+                        reading_magnitude = array[1, x]
+
+                        if x < width-1:
+                            bulk_data.append('"{0}" : {1},'.format(frequency, reading_magnitude))
+                        else:
+                            bulk_data.append('"{0}" : {1}'.format(frequency, reading_magnitude))
+
+                    bulk_data.append('}}')
+                    json_data = ''.join(bulk_data)
+
+                    PrintHelper.print("Writing Spectrum Data to S3")
+
+                    item_key = Key(destination_bucket)
+                    item_key.key = '//frequency_spectrums//{0}.json'.format(site_spectrum.Id)
+                    item_key.set_contents_from_string(json_data)
+                    item_key.close()
+
+                    PrintHelper.print("Completed writing data to S3")
+                else:
+                    PrintHelper.print('Frequency Spectrum data set not the correct shape')
+            else:
+                PrintHelper.print('Dataset not supplied')
+        else:
+            PrintHelper.print('site spectrum not supplied')
 
     def process_site_spectrum_data(self, dao, site_spectrum, dataset):
         if site_spectrum is not None:
